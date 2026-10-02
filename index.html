@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ff6b9d">
+<link rel="manifest" href="manifest.json">
+<title>Es Mambo PKY — Pembukuan</title>
+<style>
+:root{--pink:#ff5f93;--pink2:#ff8bb1;--bg:#fff7fa;--card:#fff;--text:#2d2430;--muted:#7d7079;--line:#f0dfe6;--green:#25a56a;--red:#df4d5e;--shadow:0 8px 24px rgba(67,35,50,.08)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(135deg,#ff5f93,#ff9dbd);color:white;padding:22px 18px 28px;border-radius:0 0 26px 26px;box-shadow:var(--shadow)}
+.header-row{display:flex;justify-content:space-between;align-items:center}.brand{font-weight:800;font-size:22px}.sub{opacity:.9;font-size:13px;margin-top:3px}
+main{max-width:900px;margin:auto;padding:16px 14px 90px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;box-shadow:var(--shadow)}.stat small{color:var(--muted)}.stat b{display:block;font-size:19px;margin-top:6px}
+.section{margin-top:18px}.section h2{font-size:17px;margin:0 0 10px}.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.btn{border:0;border-radius:14px;padding:13px 14px;font-weight:700;cursor:pointer;font-size:14px}.primary{background:var(--pink);color:#fff}.soft{background:#ffe6ee;color:#a82f59}.danger{background:#ffe3e5;color:#b52e3c}.dark{background:#302731;color:#fff}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;z-index:5}.navin{max-width:900px;width:100%;display:grid;grid-template-columns:repeat(5,1fr)}nav button{border:0;background:#fff;padding:9px 2px 10px;color:#82747d;font-size:11px}nav button.active{color:var(--pink);font-weight:800}nav span{display:block;font-size:20px;margin-bottom:2px}
+.view{display:none}.view.active{display:block}.toolbar{display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}select,input{width:100%;padding:11px;border:1px solid var(--line);border-radius:11px;background:#fff;font:inherit}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.field label{display:block;font-size:12px;color:var(--muted);margin:0 0 5px}.full{grid-column:1/-1}
+table{width:100%;border-collapse:collapse;font-size:12px}th,td{padding:9px 7px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--muted);font-weight:700}.tablewrap{overflow:auto}
+.badge{display:inline-block;border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800}.paid{background:#e3f8ed;color:#147447}.unpaid{background:#fff0d8;color:#9b6200}
+.kpi{font-size:27px;font-weight:850}.positive{color:var(--green)}.negative{color:var(--red)}.empty{padding:22px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);background:#302731;color:#fff;padding:11px 16px;border-radius:12px;display:none;z-index:10;font-size:13px}
+canvas{max-width:100%;height:180px!important}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}.actions{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row"><div><div class="brand">🍧 Es Mambo PKY</div><div class="sub">Pembukuan sederhana • tersimpan di perangkat</div></div><button class="btn soft" onclick="showView('settings')">⚙️</button></div>
+</header>
+<main>
+<section id="dashboard" class="view active">
+  <div class="section"><div class="grid">
+    <div class="stat"><small>Omzet</small><b id="omzet">Rp0</b></div>
+    <div class="stat"><small>Pengeluaran</small><b id="pengeluaran">Rp0</b></div>
+    <div class="stat"><small>Laba Bersih</small><b id="laba">Rp0</b></div>
+    <div class="stat"><small>Terjual</small><b id="terjual">0 pcs</b></div>
+  </div></div>
+  <div class="section card"><div class="toolbar"><h2 style="margin:0">📊 Rekap 7 Hari Terakhir</h2><button class="btn soft" onclick="showView('rekap')">Lihat semua</button></div><canvas id="chart"></canvas></div>
+  <div class="section card"><h2>⚡ Tambah transaksi</h2><div class="actions">
+    <button class="btn primary" onclick="openForm('income')">+ Pemasukan</button>
+    <button class="btn soft" onclick="openForm('expense')">+ Pengeluaran</button>
+    <button class="btn soft" onclick="openForm('stock')">+ Produksi/Stok</button>
+    <button class="btn dark" onclick="backup()">💾 Backup</button>
+  </div></div>
+  <div class="section card"><h2>💡 Ringkasan</h2><div id="summary"></div></div>
+</section>
+
+<section id="income" class="view">
+  <div class="toolbar"><h2>💰 Pemasukan</h2><button class="btn primary" onclick="openForm('income')">+ Tambah</button></div>
+  <div class="card tablewrap"><table><thead><tr><th>Tanggal</th><th>Rasa</th><th>Qty</th><th>Harga</th><th>Total</th><th>Status/Ket.</th><th></th></tr></thead><tbody id="incomeRows"></tbody></table></div>
+</section>
+
+<section id="expense" class="view">
+  <div class="toolbar"><h2>💸 Pengeluaran</h2><button class="btn primary" onclick="openForm('expense')">+ Tambah</button></div>
+  <div class="card tablewrap"><table><thead><tr><th>Tanggal</th><th>Item</th><th>Kategori</th><th>Jumlah</th><th>Total</th><th>Ket.</th><th></th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+</section>
+
+<section id="stock" class="view">
+  <div class="toolbar"><h2>📦 Stok</h2><button class="btn primary" onclick="openForm('stock')">+ Produksi</button></div>
+  <div class="card"><div class="grid" id="stockCards"></div></div>
+  <div class="section card tablewrap"><table><thead><tr><th>Tanggal</th><th>Rasa</th><th>Awal</th><th>Produksi</th><th>Terjual</th><th>Sisa</th><th></th></tr></thead><tbody id="stockRows"></tbody></table></div>
+</section>
+
+<section id="rekap" class="view">
+  <div class="toolbar"><h2>📅 Rekap Harian</h2><button class="btn dark" onclick="exportCSV()">⬇️ CSV</button></div>
+  <div class="card tablewrap"><table><thead><tr><th>Tanggal</th><th>Terjual</th><th>Omzet</th><th>Pengeluaran</th><th>Laba</th></tr></thead><tbody id="recapRows"></tbody></table></div>
+</section>
+
+<section id="settings" class="view">
+  <div class="toolbar"><h2>⚙️ Pengaturan</h2></div>
+  <div class="card">
+    <div class="field"><label>Nama usaha</label><input id="businessName"></div>
+    <div class="field" style="margin-top:10px"><label>Harga default / pcs</label><input id="defaultPrice" type="number"></div>
+    <div style="margin-top:12px" class="actions"><button class="btn primary" onclick="saveSettings()">Simpan</button><button class="btn danger" onclick="resetData()">Reset data</button><button class="btn soft" onclick="importJSON()">Import backup</button><button class="btn dark" onclick="backup()">Export backup</button></div>
+    <p style="font-size:12px;color:var(--muted)">Data disimpan di browser/perangkat ini. Backup secara berkala agar data aman.</p>
+  </div>
+</section>
+</main>
+
+<nav><div class="navin">
+<button class="active" data-view="dashboard" onclick="showView('dashboard')"><span>🏠</span>Beranda</button>
+<button data-view="income" onclick="showView('income')"><span>💰</span>Jual</button>
+<button data-view="expense" onclick="showView('expense')"><span>💸</span>Biaya</button>
+<button data-view="stock" onclick="showView('stock')"><span>📦</span>Stok</button>
+<button data-view="rekap" onclick="showView('rekap')"><span>📊</span>Rekap</button>
+</div></nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const INITIAL = {"income": [{"Tanggal": "2026-09-27", "Rasa": "Mix", "Terjual (pcs)": 10, "Harga/pcs": 2000, "Total Penjualan": 20000, "Keterangan": "Belum Lunas (Shaheen)"}, {"Tanggal": "2026-09-27", "Rasa": "Matcha dan Paddle Pop", "Terjual (pcs)": 5, "Harga/pcs": 2000, "Total Penjualan": 10000, "Keterangan": "Lunas (Adistya)"}, {"Tanggal": "2026-09-27", "Rasa": "Mix", "Terjual (pcs)": 15, "Harga/pcs": 2000, "Total Penjualan": 30000, "Keterangan": "Lunas (Sedekah)"}, {"Tanggal": "2026-09-28", "Rasa": "Mix", "Terjual (pcs)": 16, "Harga/pcs": 2000, "Total Penjualan": 32000, "Keterangan": "Belum Lunas (Teman Ibu Shaheen)"}, {"Tanggal": "2026-09-29", "Rasa": "Mix", "Terjual (pcs)": 12, "Harga/pcs": 2000, "Total Penjualan": 24000, "Keterangan": "Lunas (Ibu Rizal)"}, {"Tanggal": "2026-09-29", "Rasa": "Mix", "Terjual (pcs)": 10, "Harga/pcs": 2000, "Total Penjualan": 20000, "Keterangan": "Lunas (Makan Sendiri)"}, {"Tanggal": "2026-09-30", "Rasa": "Mix", "Terjual (pcs)": 50, "Harga/pcs": 2000, "Total Penjualan": 100000, "Keterangan": "Belum Lunas (Ayah Shaheen)"}, {"Tanggal": "2026-09-30", "Rasa": "Mix", "Terjual (pcs)": 5, "Harga/pcs": 2000, "Total Penjualan": 10000, "Keterangan": "Lunas (Wulan)"}, {"Tanggal": "2026-10-01", "Rasa": "Riza", "Terjual (pcs)": 15, "Harga/pcs": 2000, "Total Penjualan": 30000, "Keterangan": "Lunas (Riza)"}, {"Tanggal": "2026-10-01", "Rasa": "Coklat dan Matcha", "Terjual (pcs)": 10, "Harga/pcs": 2000, "Total Penjualan": 20000, "Keterangan": "Lunas (Ka Ika)"}, {"Tanggal": "2026-10-01", "Rasa": "Mix", "Terjual (pcs)": 10, "Harga/pcs": 2000, "Total Penjualan": 20000, "Keterangan": "Lunas (Adistya)"}, {"Tanggal": "2026-10-02", "Rasa": "Mix", "Terjual (pcs)": 25, "Harga/pcs": 2000, "Total Penjualan": 50000, "Keterangan": "Lunas (Mama Ebra) tf"}, {"Tanggal": "2026-10-02", "Rasa": "Mix", "Terjual (pcs)": 10, "Harga/pcs": 2000, "Total Penjualan": 20000, "Keterangan": "Lunas (Tante Mes)"}, {"Tanggal": "2026-10-02", "Rasa": "Mix", "Terjual (pcs)": 25, "Harga/pcs": 2000, "Total Penjualan": 50000, "Keterangan": "Belum Lunas(Ayah Shaheen)"}], "expense": [{"Tanggal": "26/09/2026", "Keterangan": "Susu Evaporasi", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 20980, "Total Pengeluaran": 20980, "Keterangan Tambahan": "Stok Bahan"}, {"Tanggal": "26/09/2026", "Keterangan": "Tepung Maizena", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 6000, "Total Pengeluaran": 6000, "Keterangan Tambahan": "Stok Bahan"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Strawberry by Collata", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 16000, "Total Pengeluaran": 16000, "Keterangan Tambahan": "Toping Rasa Strawberry"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Dark Coklat by Collata", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 19000, "Total Pengeluaran": 19000, "Keterangan Tambahan": "Toping Rasa Coklat"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Greentea by Collata", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 18000, "Total Pengeluaran": 18000, "Keterangan Tambahan": "Toping Rasa Matcha"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Taro by Collata", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 17000, "Total Pengeluaran": 17000, "Keterangan Tambahan": "Toping Rasa Taro"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Blueberry by Elmer 200 g", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 13000, "Total Pengeluaran": 13000, "Keterangan Tambahan": "Toping Rasa Blueberry"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Cheese by Elmer 200 g", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 15000, "Total Pengeluaran": 15000, "Keterangan Tambahan": "Toping Rasa Keju"}, {"Tanggal": "26/09/2026", "Keterangan": "Glaze Strawberry by Dunia 200 g", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 15000, "Total Pengeluaran": 15000, "Keterangan Tambahan": "Toping Rasa Strawberry"}, {"Tanggal": "26/09/2026", "Keterangan": "Pasta Family", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 8000, "Total Pengeluaran": 8000, "Keterangan Tambahan": "Perasa"}, {"Tanggal": "26/09/2026", "Keterangan": "Plastik Packaging", "Kategori": "Kemasan", "Jumlah": 30, "Harga Satuan": 1300, "Total Pengeluaran": 39000, "Keterangan Tambahan": "Packaging"}, {"Tanggal": "26/09/2026", "Keterangan": "Bensin", "Kategori": "Transportasi", "Jumlah": 6, "Harga Satuan": 13000, "Total Pengeluaran": 78000, "Keterangan Tambahan": "Bahan Bakar Transportasi"}, {"Tanggal": "26/09/2026", "Keterangan": "Gas LPG", "Kategori": "Operasional", "Jumlah": 0.3, "Harga Satuan": 40000, "Total Pengeluaran": 12000, "Keterangan Tambahan": "Bahan Bakar Memasak"}, {"Tanggal": "26/09/2026", "Keterangan": "Listrik", "Kategori": "Operasional", "Jumlah": 5, "Harga Satuan": 3000, "Total Pengeluaran": 15000, "Keterangan Tambahan": "Pendingin Es"}, {"Tanggal": "28/09/2026", "Keterangan": "Glaze Greentea by Elmer 200g", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 13500, "Total Pengeluaran": 13500, "Keterangan Tambahan": "Toping Rasa Greentea"}, {"Tanggal": "28/09/2026", "Keterangan": "Ultra Milk UHT Plain 1000 ml", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 21000, "Total Pengeluaran": 21000, "Keterangan Tambahan": "Susu UHT"}, {"Tanggal": "28/09/2026", "Keterangan": "Susu Kental Manis by Tiga Sapi 490 g", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 14000, "Total Pengeluaran": 14000, "Keterangan Tambahan": "Susu Kental Manis"}, {"Tanggal": "28/09/2026", "Keterangan": "Gula Pasir By Rosebrand 1 Kg", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 21000, "Total Pengeluaran": 21000, "Keterangan Tambahan": "Gula Pasir"}, {"Tanggal": "30/09/2026", "Keterangan": "Susu UHT Ultramilk by depan kencana rajawali", "Kategori": "Bahan", "Jumlah": 3, "Harga Satuan": 20000, "Total Pengeluaran": 60000, "Keterangan Tambahan": "Susu UHT"}, {"Tanggal": "30/09/2026", "Keterangan": "Susu Kental Manis by Tiga Sapi di depan Kencana Rajawali", "Kategori": "Bahan", "Jumlah": 3, "Harga Satuan": 14000, "Total Pengeluaran": 42000, "Keterangan Tambahan": "Susu Kental Manis"}, {"Tanggal": "30/09/2026", "Keterangan": "Tepung Maizena depan Kencana Rajawali", "Kategori": "Bahan", "Jumlah": 1, "Harga Satuan": 11000, "Total Pengeluaran": 11000, "Keterangan Tambahan": "Tepung Maizena"}], "stock": [{"Tanggal": "2026-10-02", "Rasa": "Matcha", "Stok Awal": 12, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 12, "Catatan": null}, {"Tanggal": "2026-10-02", "Rasa": "Vanilla Chocolate", "Stok Awal": 17, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 17, "Catatan": null}, {"Tanggal": "2026-10-02", "Rasa": "Taro", "Stok Awal": 13, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 13, "Catatan": null}, {"Tanggal": "2026-10-02", "Rasa": "Matcha Berry", "Stok Awal": 11, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 11, "Catatan": null}, {"Tanggal": "2026-10-02", "Rasa": "Paddle Pop", "Stok Awal": 12, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 12, "Catatan": null}, {"Tanggal": "2026-10-02", "Rasa": "Cotton Candy", "Stok Awal": 8, "Produksi/Tambah": null, "Terjual": 0, "Sisa Stok": 8, "Catatan": null}], "settings": {"businessName": "Es Mambo PKY", "defaultPrice": 2000, "flavors": ["Matcha", "Vanilla Chocolate", "Taro", "Matcha Berry", "Paddle Pop", "Cotton Candy", "Coklat", "Oreo", "Bubble Gum", "Tutty Fruity", "Mangga", "Strawberry"]}};
+const KEY='esmambo_pembukuan_v1';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||INITIAL;
+function save(){localStorage.setItem(KEY,JSON.stringify(db));render()}
+function rupiah(n){return new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Number(n)||0)}
+function num(v){return Number(v)||0}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function toast(s){let e=document.getElementById('toast');e.textContent=s;e.style.display='block';setTimeout(()=>e.style.display='none',1800)}
+function today(){return new Date().toISOString().slice(0,10)}
+function totalIncome(){return db.income.reduce((a,r)=>a+num(r['Terjual (pcs)'])*num(r['Harga/pcs']),0)}
+function totalExpense(){return db.expense.reduce((a,r)=>a+num(r['Jumlah'])*num(r['Harga Satuan']),0)}
+function totalSold(){return db.income.reduce((a,r)=>a+num(r['Terjual (pcs)']),0)}
+function dates(){let s=new Set([...db.income.map(r=>r.Tanggal),...db.expense.map(r=>r.Tanggal)]);return [...s].sort().reverse()}
+function byDate(d){return {sold:db.income.filter(r=>r.Tanggal===d).reduce((a,r)=>a+num(r['Terjual (pcs)']),0),omzet:db.income.filter(r=>r.Tanggal===d).reduce((a,r)=>a+num(r['Terjual (pcs)'])*num(r['Harga/pcs']),0),expense:db.expense.filter(r=>r.Tanggal===d).reduce((a,r)=>a+num(r.Jumlah)*num(r['Harga Satuan']),0)}}
+function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.getElementById(v).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.view===v)); if(v==='settings'){businessName.value=db.settings.businessName;defaultPrice.value=db.settings.defaultPrice} render()}
+function openForm(type){
+ let title=type==='income'?'Tambah Pemasukan':type==='expense'?'Tambah Pengeluaran':'Tambah Produksi/Stok';
+ let html='';
+ if(type==='income') html=`<div class="formgrid">
+ <div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${today()}"></div>
+ <div class="field"><label>Rasa</label><input id="fflavor" list="flavors" placeholder="Contoh: Matcha"></div>
+ <div class="field"><label>Terjual (pcs)</label><input id="fqty" type="number" min="1"></div>
+ <div class="field"><label>Harga/pcs</label><input id="fprice" type="number" value="${db.settings.defaultPrice}"></div>
+ <div class="field full"><label>Keterangan (contoh: Lunas / Belum Lunas)</label><input id="fnote" placeholder="Lunas (Nama pembeli)"></div></div>
+ <datalist id="flavors">${db.settings.flavors.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>`;
+ if(type==='expense') html=`<div class="formgrid">
+ <div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${today()}"></div>
+ <div class="field"><label>Kategori</label><select id="fcat"><option>Bahan</option><option>Kemasan</option><option>Transportasi</option><option>Operasional</option><option>Lainnya</option></select></div>
+ <div class="field full"><label>Keterangan</label><input id="fitem" placeholder="Contoh: Gula pasir"></div>
+ <div class="field"><label>Jumlah</label><input id="fqty" type="number" step="0.01" min="0"></div>
+ <div class="field"><label>Harga satuan</label><input id="fprice" type="number" min="0"></div>
+ <div class="field full"><label>Keterangan tambahan</label><input id="fnote" placeholder="Stok bahan / operasional"></div></div>`;
+ if(type==='stock') html=`<div class="formgrid">
+ <div class="field"><label>Tanggal</label><input id="fdate" type="date" value="${today()}"></div>
+ <div class="field"><label>Rasa</label><input id="fflavor" list="flavors" placeholder="Contoh: Matcha"></div>
+ <div class="field"><label>Stok awal</label><input id="fstart" type="number" min="0" value="0"></div>
+ <div class="field"><label>Produksi / Tambah</label><input id="fadd" type="number" min="0" value="0"></div>
+ <div class="field full"><label>Catatan</label><input id="fnote"></div></div>
+ <datalist id="flavors">${db.settings.flavors.map(x=>`<option>${esc(x)}</option>`).join('')}</datalist>`;
+ let wrap=document.createElement('div');wrap.innerHTML=`<div style="position:fixed;inset:0;background:rgba(30,20,25,.45);z-index:20;display:grid;place-items:end center"><div class="card" style="width:min(900px,100%);border-radius:22px 22px 0 0;padding:18px"><div class="toolbar"><h2 style="margin:0">${title}</h2><button class="btn soft" id="close">Tutup</button></div>${html}<button class="btn primary" style="width:100%;margin-top:12px" id="saveForm">Simpan</button></div></div>`;
+ document.body.appendChild(wrap);wrap.querySelector('#close').onclick=()=>wrap.remove();
+ wrap.querySelector('#saveForm').onclick=()=>{
+   if(type==='income'){db.income.unshift({Tanggal:fdate.value,Rasa:fflavor.value.trim(), 'Terjual (pcs)':num(fqty.value),'Harga/pcs':num(fprice.value),'Keterangan':fnote.value.trim()})}
+   if(type==='expense'){db.expense.unshift({Tanggal:fdate.value,Keterangan:fitem.value.trim(),Kategori:fcat.value,Jumlah:num(fqty.value),'Harga Satuan':num(fprice.value),'Keterangan Tambahan':fnote.value.trim()})}
+   if(type==='stock'){db.stock.unshift({Tanggal:fdate.value,Rasa:fflavor.value.trim(),'Stok Awal':num(fstart.value),'Produksi/Tambah':num(fadd.value),Terjual:0,'Catatan':fnote.value.trim()})}
+   wrap.remove();save();toast('Tersimpan')}
+}
+function del(type,i){if(!confirm('Hapus data ini?'))return;db[type].splice(i,1);save();toast('Data dihapus')}
+function render(){
+ let om=totalIncome(), ex=totalExpense(), lb=om-ex, ts=totalSold();
+ omzet.textContent=rupiah(om);pengeluaran.textContent=rupiah(ex);laba.textContent=rupiah(lb);laba.className=lb>=0?'positive':'negative';terjual.textContent=ts+' pcs';
+ incomeRows.innerHTML=db.income.map((r,i)=>`<tr><td>${r.Tanggal}</td><td>${esc(r.Rasa)}</td><td>${num(r['Terjual (pcs)'])}</td><td>${rupiah(r['Harga/pcs'])}</td><td>${rupiah(num(r['Terjual (pcs)'])*num(r['Harga/pcs']))}</td><td>${r.Keterangan?.toLowerCase().includes('belum')?'<span class="badge unpaid">Belum</span>':'<span class="badge paid">Lunas</span>'}<br>${esc(r.Keterangan||'')}</td><td><button class="btn danger" onclick="del('income',${i})">×</button></td></tr>`).join('')||`<tr><td colspan="7" class="empty">Belum ada transaksi.</td></tr>`;
+ expenseRows.innerHTML=db.expense.map((r,i)=>`<tr><td>${r.Tanggal}</td><td>${esc(r.Keterangan)}</td><td>${esc(r.Kategori)}</td><td>${num(r.Jumlah)}</td><td>${rupiah(num(r.Jumlah)*num(r['Harga Satuan']))}</td><td>${esc(r['Keterangan Tambahan']||'')}</td><td><button class="btn danger" onclick="del('expense',${i})">×</button></td></tr>`).join('')||`<tr><td colspan="7" class="empty">Belum ada pengeluaran.</td></tr>`;
+ let flavors=[...new Set([...db.settings.flavors,...db.stock.map(r=>r.Rasa).filter(Boolean)])];
+ stockCards.innerHTML=flavors.map(f=>{let rec=db.stock.filter(r=>r.Rasa===f);let start=rec.length?num(rec[rec.length-1]['Stok Awal']):0;let add=rec.reduce((a,r)=>a+num(r['Produksi/Tambah']),0);let sold=db.income.filter(r=>r.Rasa===f).reduce((a,r)=>a+num(r['Terjual (pcs)']),0);let remain=start+add-sold;return `<div class="stat"><small>${esc(f)}</small><b>${remain} pcs</b><small>terjual ${sold}</small></div>`}).join('');
+ stockRows.innerHTML=db.stock.map((r,i)=>{let sold=db.income.filter(x=>x.Tanggal===r.Tanggal&&x.Rasa===r.Rasa).reduce((a,x)=>a+num(x['Terjual (pcs)']),0);let remain=num(r['Stok Awal'])+num(r['Produksi/Tambah'])-sold;return `<tr><td>${r.Tanggal}</td><td>${esc(r.Rasa)}</td><td>${num(r['Stok Awal'])}</td><td>${num(r['Produksi/Tambah'])}</td><td>${sold}</td><td><b>${remain}</b></td><td><button class="btn danger" onclick="del('stock',${i})">×</button></td></tr>`}).join('')||`<tr><td colspan="7" class="empty">Belum ada data stok.</td></tr>`;
+ let ds=dates();recapRows.innerHTML=ds.map(d=>{let x=byDate(d);return `<tr><td>${d}</td><td>${x.sold}</td><td>${rupiah(x.omzet)}</td><td>${rupiah(x.expense)}</td><td class="${x.omzet-x.expense>=0?'positive':'negative'}"><b>${rupiah(x.omzet-x.expense)}</b></td></tr>`}).join('')||`<tr><td colspan="5" class="empty">Belum ada data.</td></tr>`;
+ let unpaid=db.income.filter(r=>String(r.Keterangan||'').toLowerCase().includes('belum')).reduce((a,r)=>a+num(r['Terjual (pcs)'])*num(r['Harga/pcs']),0);
+ summary.innerHTML=`<p>💰 Total omzet: <b>${rupiah(om)}</b></p><p>🧾 Total pengeluaran: <b>${rupiah(ex)}</b></p><p>📈 Laba bersih: <b class="${lb>=0?'positive':'negative'}">${rupiah(lb)}</b></p><p>🛍️ Total terjual: <b>${ts} pcs</b></p><p>⏳ Catatan belum lunas: <b>${rupiah(unpaid)}</b></p>`;
+ drawChart();
+}
+function drawChart(){let c=document.getElementById('chart');if(!c)return;let ctx=c.getContext('2d'),w=c.width=c.clientWidth*2,h=c.height=180*2;ctx.clearRect(0,0,w,h);let ds=dates().slice(0,7).reverse();if(!ds.length)return;let vals=ds.map(d=>byDate(d).omzet),mx=Math.max(...vals,1),pad=25;ctx.font='22px system-ui';ctx.fillStyle='#ff5f93';let bw=(w-pad*2)/ds.length*.55;vals.forEach((v,i)=>{let x=pad+i*(w-pad*2)/ds.length+(w-pad*2)/ds.length*.22;let bh=(h-55)*v/mx;ctx.fillRect(x,h-30-bh,bw,bh);ctx.fillStyle='#6f626b';ctx.font='18px system-ui';ctx.fillText(ds[i].slice(5),x,h-7);ctx.fillStyle='#ff5f93';});}
+function saveSettings(){db.settings.businessName=businessName.value||'Es Mambo PKY';db.settings.defaultPrice=num(defaultPrice.value)||2000;save();toast('Pengaturan disimpan')}
+function backup(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(db,null,2)],{type:'application/json'}));a.download='backup-es-mambo-'+today()+'.json';a.click();toast('Backup dibuat')}
+function importJSON(){let i=document.createElement('input');i.type='file';i.accept='.json';i.onchange=()=>{let f=i.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{try{db=JSON.parse(r.result);save();toast('Backup berhasil diimpor')}catch(e){alert('File backup tidak valid')}};r.readAsText(f)};i.click()}
+function exportCSV(){let lines=[['Tanggal','Terjual','Omzet','Pengeluaran','Laba']];dates().forEach(d=>{let x=byDate(d);lines.push([d,x.sold,x.omzet,x.expense,x.omzet-x.expense])});let csv=lines.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(',')).join('\\n');let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='rekap-es-mambo.csv';a.click()}
+function resetData(){if(confirm('Semua transaksi di aplikasi ini akan dihapus dan dikembalikan ke data awal Excel. Lanjutkan?')){localStorage.removeItem(KEY);db=JSON.parse(JSON.stringify(INITIAL));render();toast('Data dikembalikan ke awal')}}
+render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body></html>

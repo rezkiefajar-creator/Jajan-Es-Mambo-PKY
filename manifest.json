@@ -1,0 +1,9 @@
+{
+  "name":"Es Mambo PKY — Pembukuan",
+  "short_name":"Es Mambo",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#fff7fa",
+  "theme_color":"#ff5f93",
+  "icons":[]
+}
